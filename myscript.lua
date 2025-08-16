@@ -1,4 +1,4 @@
--- Fly & NoClip UI แยก (Modern/Neumorphism Style UI) มือถือ/PC/Delta
+-- Fly & NoClip UI (Drag ได้, InfoLabel บรรทัดเดียว, Modern Style, มือถือ/PC/Delta)
 
 local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
 local flySpeed, flying, noclipping = defaultSpeed, false, false
@@ -10,7 +10,7 @@ local humanoid = char:FindFirstChildOfClass("Humanoid")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- สร้าง MainFrame
+-- MainFrame (เริ่มที่ขวาล่าง)
 local scrnGui = Instance.new("ScreenGui")
 scrnGui.Name = "FlyNoClipUI"
 scrnGui.ResetOnSpawn = false
@@ -18,11 +18,13 @@ scrnGui.Parent = player:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 300, 0, 210)
-mainFrame.Position = UDim2.new(0, 30, 1, -240)
+mainFrame.Size = UDim2.new(0, 300, 0, 90)
+mainFrame.Position = UDim2.new(1, -310, 1, -150)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 40, 60)
 mainFrame.BackgroundTransparency = 0.1
 mainFrame.BorderSizePixel = 0
+mainFrame.Active = true -- สำคัญสำหรับ Drag
+mainFrame.Draggable = false -- เราจะใช้ custom drag
 mainFrame.Parent = scrnGui
 
 local mainCorner = Instance.new("UICorner", mainFrame)
@@ -31,7 +33,7 @@ mainCorner.CornerRadius = UDim.new(0, 22)
 local mainStroke = Instance.new("UIStroke", mainFrame)
 mainStroke.Thickness = 2
 mainStroke.Color = Color3.fromRGB(85, 170, 255)
-mainStroke.Transparency = 0.2
+mainStroke.Transparency = 0.25
 
 local shadow = Instance.new("ImageLabel", mainFrame)
 shadow.BackgroundTransparency = 1
@@ -39,13 +41,14 @@ shadow.Image = "rbxassetid://1316045217"
 shadow.Size = UDim2.new(1, 32, 1, 32)
 shadow.Position = UDim2.new(0, -16, 0, -16)
 shadow.ZIndex = 0
-shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-shadow.ImageTransparency = 0.7
+shadow.ImageColor3 = Color3.new(0, 0, 0)
+shadow.ImageTransparency = 0.8
 
-local function makeButton(name, pos, text, color)
+-- ปุ่ม Modern
+local function makeButton(name, pos, size, text, color)
     local b = Instance.new("TextButton")
     b.Name = name
-    b.Size = UDim2.new(0, 105, 0, 48)
+    b.Size = size
     b.Position = pos
     b.Text = text
     b.BackgroundColor3 = color or Color3.fromRGB(40, 120, 250)
@@ -58,7 +61,7 @@ local function makeButton(name, pos, text, color)
     b.ZIndex = 2
 
     local corner = Instance.new("UICorner", b)
-    corner.CornerRadius = UDim.new(0, 18)
+    corner.CornerRadius = UDim.new(0, 14)
 
     local stroke = Instance.new("UIStroke", b)
     stroke.Thickness = 2
@@ -72,46 +75,86 @@ local function makeButton(name, pos, text, color)
         ColorSequenceKeypoint.new(1, b.BackgroundColor3)
     }
     grad.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 0.35),
+        NumberSequenceKeypoint.new(0, 0.30),
         NumberSequenceKeypoint.new(1, 0.0),
     }
     return b
 end
 
-local flyBtn = makeButton("FlyBtn", UDim2.new(0, 18, 0, 18), "บิน", Color3.fromRGB(40, 130, 255))
+local flyBtn = makeButton("FlyBtn", UDim2.new(0, 10, 0, 10), UDim2.new(0, 80, 0, 32), "บิน", Color3.fromRGB(40, 130, 255))
 flyBtn.Parent = mainFrame
-local noclipBtn = makeButton("NoClipBtn", UDim2.new(0, 177, 0, 18), "NoClip", Color3.fromRGB(60, 200, 110))
+local noclipBtn = makeButton("NoClipBtn", UDim2.new(0, 100, 0, 10), UDim2.new(0, 80, 0, 32), "NoClip", Color3.fromRGB(60, 200, 110))
 noclipBtn.Parent = mainFrame
-
-local speedUpBtn = makeButton("SpeedUpBtn", UDim2.new(0, 18, 0, 78), "+", Color3.fromRGB(110, 160, 250))
-speedUpBtn.Size = UDim2.new(0, 55, 0, 40)
+local speedUpBtn = makeButton("SpeedUpBtn", UDim2.new(0, 200, 0, 10), UDim2.new(0, 40, 0, 32), "+", Color3.fromRGB(110, 160, 250))
 speedUpBtn.Parent = mainFrame
-local speedDownBtn = makeButton("SpeedDownBtn", UDim2.new(0, 78, 0, 78), "-", Color3.fromRGB(110, 160, 250))
-speedDownBtn.Size = UDim2.new(0, 55, 0, 40)
+local speedDownBtn = makeButton("SpeedDownBtn", UDim2.new(0, 250, 0, 10), UDim2.new(0, 40, 0, 32), "-", Color3.fromRGB(110, 160, 250))
 speedDownBtn.Parent = mainFrame
 
 local infoLabel = Instance.new("TextLabel", mainFrame)
 infoLabel.Name = "InfoLabel"
-infoLabel.Position = UDim2.new(0, 18, 0, 130)
-infoLabel.Size = UDim2.new(0, 264, 0, 58)
-infoLabel.BackgroundTransparency = 0.15
+infoLabel.Position = UDim2.new(0, 10, 0, 52)
+infoLabel.Size = UDim2.new(1, -20, 0, 28)
+infoLabel.BackgroundTransparency = 0.13
 infoLabel.BackgroundColor3 = Color3.fromRGB(60, 75, 100)
 infoLabel.TextColor3 = Color3.fromRGB(255,255,255)
 infoLabel.Font = Enum.Font.GothamSemibold
 infoLabel.TextScaled = true
+infoLabel.TextWrapped = false
+infoLabel.ClipsDescendants = true
 infoLabel.Text = "Fly: OFF | NoClip: OFF | Speed: "..flySpeed
 infoLabel.ZIndex = 2
 local infoCorner = Instance.new("UICorner", infoLabel)
-infoCorner.CornerRadius = UDim.new(0, 16)
+infoCorner.CornerRadius = UDim.new(0, 12)
 local infoStroke = Instance.new("UIStroke", infoLabel)
 infoStroke.Thickness = 1
 infoStroke.Color = Color3.fromRGB(180,220,255)
 infoStroke.Transparency = 0.5
 
+-- Drag (มือถือ+PC)
+do
+    local dragging, dragInput, dragStart, startPos
+    local UserInputService = game:GetService("UserInputService")
+
+    local function update(input)
+        if not dragging then return end
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            mainFrame.Position.X.Scale,
+            math.clamp(startPos.X.Offset + delta.X, 0, scrnGui.AbsoluteSize.X - mainFrame.AbsoluteSize.X),
+            mainFrame.Position.Y.Scale,
+            math.clamp(startPos.Y.Offset + delta.Y, 0, scrnGui.AbsoluteSize.Y - mainFrame.AbsoluteSize.Y)
+        )
+    end
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    mainFrame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
 local bv, bg, flyConn, noclipConn
 
 local function updateInfo()
-    infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").."   |   NoClip: "..(noclipping and "ON" or "OFF").."   |   Speed: "..flySpeed
+    infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | NoClip: "..(noclipping and "ON" or "OFF").." | Speed: "..flySpeed
 end
 
 -- NoClip แบบแรงสุด
@@ -240,7 +283,6 @@ UIS.InputBegan:Connect(function(i, gpe)
     end
 end)
 
--- รีเซ็ต NoClip/Fly เมื่อ respawn
 player.CharacterAdded:Connect(function(newChar)
     char = newChar
     hrp = char:WaitForChild("HumanoidRootPart")
@@ -251,4 +293,4 @@ player.CharacterAdded:Connect(function(newChar)
     noclipBtn.Text = "NoClip"
 end)
 
-print("Fly & NoClip UI (Modern Style) loaded! เปิด/ปิดแยกได้ กด F = Fly, N = NoClip, + - = Speed")
+print("Fly & NoClip UI (Drag+Modern) loaded! เปิด/ปิดแยกได้ กด F = Fly, N = NoClip, + - = Speed, ลากกรอบได้")
