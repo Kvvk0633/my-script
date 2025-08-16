@@ -1,4 +1,4 @@
--- Superman Fly + NoClip (ทะลุทุกสิ่ง, มือถือ/PC/Delta)
+-- Superman Fly + Strong NoClip (ทะลุแน่นอน มือถือ/PC/Delta)
 -- ปุ่ม "บิน" เปิด/ปิด, เดินหน้าหรือจอยสติ๊ก = พุ่งไปทางกล้อง, +/– ปรับสปีด
 
 local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
@@ -53,11 +53,21 @@ local function updateInfo()
     infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | Speed: "..flySpeed
 end
 
--- NoClip: ปิด Collision ตลอดเวลาบิน
-local function setNoClip(state)
+-- NoClip: ปิด Collision ทุกเฟรม ทุกชิ้นจริง
+local function strongNoClip()
     for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") and part.CanCollide ~= not state then
-            part.CanCollide = not state
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+            if part:IsA("MeshPart") then part.CanTouch = false end
+        end
+    end
+end
+
+local function resetCollide()
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+            if part:IsA("MeshPart") then part.CanTouch = true end
         end
     end
 end
@@ -77,13 +87,8 @@ function startFly()
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
 
-    -- เปิด NoClip ตลอดเวลาบิน
-    setNoClip(true)
-    noclipConn = RunService.Stepped:Connect(function()
-        if flying then
-            setNoClip(true)
-        end
-    end)
+    -- NoClip ทุกเฟรม
+    noclipConn = RunService.Stepped:Connect(strongNoClip)
 
     flyConn = RunService.Heartbeat:Connect(function()
         if not flying or not bv or not bg or not bv.Parent or not bg.Parent then return end
@@ -108,8 +113,7 @@ function stopFly()
     if noclipConn then noclipConn:Disconnect() end
     if bv then pcall(function() bv:Destroy() end) end
     if bg then pcall(function() bg:Destroy() end) end
-    -- คืน Collision ทุกชิ้นส่วน
-    setNoClip(false)
+    resetCollide()
     updateInfo()
 end
 
@@ -150,4 +154,4 @@ UIS.InputBegan:Connect(function(i, gpe)
     end
 end)
 
-print("Superman Fly + NoClip loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กเพื่อพุ่งทะลุสิ่งกีดขวางไปทางกล้อง")
+print("Superman Fly + Strong NoClip loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กจะทะลุทุกอย่างไปทางกล้อง")
