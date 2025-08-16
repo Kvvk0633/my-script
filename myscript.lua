@@ -1,6 +1,5 @@
--- Superman Fly Script (Real-Time Camera Direction, มือถือ+PC)
--- กด "บิน" เพื่อเปิด/ปิด, กดเดินหน้าหรือจอยสติ๊กพุ่งไปทางกล้องทันที
--- +/– ปรับสปีด
+-- Superman Fly Script (บินตามกล้อง, GUI รองรับมือถือ 100%)
+-- ปุ่ม: "บิน", "+", "-" โชว์บนหน้าจอ กดเดินหน้าจะบินไปทางกล้องทันที
 
 local defaultSpeed = 80
 local minSpeed = 10
@@ -16,7 +15,12 @@ local humanoid = char:FindFirstChildOfClass("Humanoid")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- GUI สำหรับมือถือ
+-- สร้าง GUI ใน PlayerGui เท่านั้น (ปลอดภัยสุด)
+local scrnGui = Instance.new("ScreenGui")
+scrnGui.Name = "SupermanFlyGUI"
+scrnGui.ResetOnSpawn = false
+scrnGui.Parent = player:WaitForChild("PlayerGui")
+
 local function makeButton(name, pos, size, text, parent)
     local b = Instance.new("TextButton")
     b.Name = name
@@ -33,11 +37,6 @@ local function makeButton(name, pos, size, text, parent)
     b.Parent = parent
     return b
 end
-
-local scrnGui = Instance.new("ScreenGui")
-scrnGui.Name = "SupermanFlyGUI"
-scrnGui.ResetOnSpawn = false
-scrnGui.Parent = game.CoreGui or player.PlayerGui
 
 local flyBtn = makeButton("FlyBtn", Vector2.new(30, 200), Vector2.new(100, 50), "บิน", scrnGui)
 local speedUpBtn = makeButton("SpeedUpBtn", Vector2.new(30, 140), Vector2.new(50, 50), "+", scrnGui)
@@ -79,9 +78,8 @@ function startFly()
         local moveDir = Vector3.new()
         if humanoid then moveDir = humanoid.MoveDirection end
 
-        -- ถ้า MoveDirection เดินหน้าหรือจอยสติ๊กเดินหน้า ให้พุ่งไป LookVector กล้องทันที
+        -- ถ้าเดินหน้าหรือจอยสติ๊กเดินหน้า ให้พุ่งไปทางกล้อง
         if moveDir.Magnitude > 0 then
-            -- ให้เดินหน้าตามทิศทางกล้องเท่านั้น
             local look = cam.CFrame.LookVector
             bv.Velocity = look.Unit * flySpeed
             bg.CFrame = CFrame.new(hrp.Position, hrp.Position + look)
@@ -141,4 +139,6 @@ UIS.InputBegan:Connect(function(i, gpe)
         flySpeed = math.max(minSpeed, flySpeed - 10)
         updateInfo()
     end
-end
+end)
+
+print("Superman Fly (Camera Direction, PlayerGui) loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กเพื่อพุ่งไปทางกล้อง")
