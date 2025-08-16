@@ -1,18 +1,23 @@
--- Tower Defense Macro Recorder (UI Modern, Drag ได้, อัด Macro ช่อง 1-6, เวลา, ตำแหน่ง, Info index)
+-- ASTD X Macro Recorder: จับเวลาจริงและตำแหน่งจริงการ spawn ยูนิตในแมพ (จับยูนิตที่ spawn บนสนาม)
 
 local player = game.Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local macroSteps = {}
+local recording = false
+local macroStartTime = nil
+local selectedSlot = nil
+local unitFolderName = "Units" -- เปลี่ยนชื่อถ้า ASTD X ใช้ชื่ออื่น
 
--- UI Modern
+-- UI Modern Minimal
 local scrnGui = Instance.new("ScreenGui")
-scrnGui.Name = "TD_MacroUI"
+scrnGui.Name = "ASTDX_MacroUI"
 scrnGui.ResetOnSpawn = false
 scrnGui.Parent = player:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 370, 0, 200)
+mainFrame.Size = UDim2.new(0, 370, 0, 138)
 mainFrame.Position = UDim2.new(0.5, -185, 0.35, 0)
 mainFrame.BackgroundColor3 = Color3.fromRGB(22, 30, 44)
 mainFrame.BackgroundTransparency = 0.18
@@ -30,22 +35,20 @@ shadow.ZIndex = 0
 shadow.ImageColor3 = Color3.new(0, 0, 0)
 shadow.ImageTransparency = 0.8
 
--- Title
 local title = Instance.new("TextLabel", mainFrame)
 title.Size = UDim2.new(1, -20, 0, 34)
 title.Position = UDim2.new(0, 10, 0, 10)
 title.BackgroundTransparency = 1
-title.Text = "Tower Defense Macro Recorder"
+title.Text = "ASTD X Macro Recorder"
 title.TextColor3 = Color3.fromRGB(210, 225, 255)
 title.Font = Enum.Font.GothamBold
 title.TextScaled = true
 title.TextXAlignment = Enum.TextXAlignment.Center
 
--- Macro Info
 local infoLabel = Instance.new("TextLabel", mainFrame)
 infoLabel.Name = "InfoLabel"
 infoLabel.Position = UDim2.new(0, 12, 0, 48)
-infoLabel.Size = UDim2.new(1, -24, 0, 30)
+infoLabel.Size = UDim2.new(1, -24, 0, 32)
 infoLabel.BackgroundTransparency = 0.12
 infoLabel.BackgroundColor3 = Color3.fromRGB(42, 56, 72)
 infoLabel.TextColor3 = Color3.fromRGB(220,235,255)
@@ -57,7 +60,6 @@ infoLabel.Text = "Macro: 0 steps | Not recording"
 local infoCorner = Instance.new("UICorner", infoLabel)
 infoCorner.CornerRadius = UDim.new(0, 9)
 
--- Buttons
 local function makeButton(name, pos, size, text, color)
     local b = Instance.new("TextButton")
     b.Name = name
@@ -83,27 +85,23 @@ resetBtn.Parent = mainFrame
 local exportBtn = makeButton("ExportBtn", UDim2.new(0, 222, 0, 90), UDim2.new(0, 120, 0, 38), "Copy Macro", Color3.fromRGB(44,144,255))
 exportBtn.Parent = mainFrame
 
--- Macro Logic
-local macroSteps = {}
-local recording = false
-local macroStartTime = nil
-
 local function updateInfo()
     infoLabel.Text = (recording and "● Recording" or "Macro: "..#macroSteps.." steps | Not recording")
     if #macroSteps > 0 then
         local last = macroSteps[#macroSteps]
-        infoLabel.Text = infoLabel.Text..(" | Last: [#%d] U%s at %.2fs (%d,%d,%d)")
-            :format(last.index, last.unitSlot, last.time, math.floor(last.pos.X), math.floor(last.pos.Y), math.floor(last.pos.Z))
+        infoLabel.Text = infoLabel.Text..(" | [#%d] U%s @%.2fs (%d,%d,%d)")
+            :format(last.index, last.unitSlot or "?", last.time, math.floor(last.pos.X), math.floor(last.pos.Y), math.floor(last.pos.Z))
     end
 end
 
 local function resetMacro()
     macroSteps = {}
     macroStartTime = nil
+    selectedSlot = nil
     updateInfo()
 end
 
--- Drag Logic (Touch/Mouse)
+-- Drag UI
 do
     local dragging, dragInput, dragStart, startPos
     local function update(input)
@@ -139,13 +137,9 @@ do
     end)
 end
 
--- บันทึก Macro เมื่อวาง Unit (Slot 1-6)
--- หมายเหตุ: คุณต้องแก้ไข event นี้ให้ตรงกับระบบเกม Tower Defense ของคุณ
--- ตัวอย่างนี้จะฟังการกดปุ่ม 1-6 (KeyCode One~Six) แล้วบันทึกตำแหน่งเมาส์ (หรือจอย) เป็นจุดวาง unit
--- คุณควรเปลี่ยนเป็น event จริงของเกม (หรือเช็ค Tool/Unit placement system จริง)
+-- Step 1: จำ slot ที่เลือก (1-6)
 UIS.InputBegan:Connect(function(input, gpe)
-    if not recording then return end
-    if gpe then return end
+    if not recording or gpe then return end
     local slot = nil
     if input.KeyCode == Enum.KeyCode.One then slot = 1
     elseif input.KeyCode == Enum.KeyCode.Two then slot = 2
@@ -154,25 +148,47 @@ UIS.InputBegan:Connect(function(input, gpe)
     elseif input.KeyCode == Enum.KeyCode.Five then slot = 5
     elseif input.KeyCode == Enum.KeyCode.Six then slot = 6 end
     if slot then
-        -- หาตำแหน่ง world ตรงเมาส์ (หรือจอย)
-        local cam = Workspace.CurrentCamera
-        local mouse = player:GetMouse()
-        local ray = cam:ScreenPointToRay(mouse.X, mouse.Y)
-        local pos = ray.Origin + ray.Direction * 100 -- ปรับความลึกหากเกมใช้พื้นสูง/ต่ำ
-        local t = tick()
-        if not macroStartTime then macroStartTime = t end
-        local index = #macroSteps + 1
-        table.insert(macroSteps, {
-            index = index,
-            time = (t - macroStartTime),
-            unitSlot = slot,
-            pos = pos
-        })
-        updateInfo()
+        selectedSlot = slot
     end
 end)
 
--- ปุ่ม UI
+-- Step 2: ฟัง event spawn ยูนิตใน Workspace.Units (หรือ path ที่ตรงกับเกมจริง)
+local function isMyUnit(unit)
+    -- ASTD X มักจะมี property หรือชื่อ/owner ตรงกับ local player
+    -- ตัวอย่าง: unit.Owner == player หรือ unit.Name:find(player.Name) หรือ Parent เป็นของ userId
+    if unit:FindFirstChild("Owner") and tostring(unit.Owner.Value) == player.Name then
+        return true
+    end
+    if unit.Name:find(player.Name) or unit.Name:find(player.UserId) then
+        return true
+    end
+    -- เพิ่ม logic เช็คยูนิตของเราเองได้ตาม ASTD X จริง
+    return false
+end
+
+if Workspace:FindFirstChild(unitFolderName) then
+    Workspace[unitFolderName].ChildAdded:Connect(function(unit)
+        if not recording then return end
+        -- เช็คว่าเป็นยูนิตของเราและมี position
+        if isMyUnit(unit) and selectedSlot then
+            local t = tick()
+            if not macroStartTime then macroStartTime = t end
+            local index = #macroSteps + 1
+            local pos = unit.PrimaryPart and unit.PrimaryPart.Position or (unit:IsA("BasePart") and unit.Position or unit.Position or Vector3.new(0,0,0))
+            table.insert(macroSteps, {
+                index = index,
+                time = (t - macroStartTime),
+                unitSlot = selectedSlot,
+                pos = pos
+            })
+            updateInfo()
+            selectedSlot = nil -- ต้องเลือก slot ใหม่ทุกครั้ง
+        end
+    end)
+else
+    warn("หา Workspace.Units ไม่เจอ! กรุณาตรวจสอบชื่อโฟลเดอร์ยูนิตในแมพ ASTD X")
+end
+
 recBtn.MouseButton1Click:Connect(function()
     recording = not recording
     recBtn.Text = recording and "■ Stop" or "● Record"
@@ -195,12 +211,11 @@ exportBtn.MouseButton1Click:Connect(function()
         result = result .. "}\n"
         setclipboard(result)
         exportBtn.Text = "Copied!"
-        wait(1)
+        task.wait(1)
         exportBtn.Text = "Copy Macro"
     end
 end)
 
--- Auto update info
 updateInfo()
 
-print("Tower Defense Macro Recorder UI loaded! ปุ่ม 1-6 = อัด Macro (เวลา/slot/pos)")
+print("ASTD X Macro Recorder (จับตำแหน่งยูนิต spawn จริง) loaded! เลือก slot (1-6) แล้ววางยูนิตในเกม จะบันทึกเวลา/slot/ตำแหน่งจริง")
