@@ -1,5 +1,5 @@
--- Superman Fly Script (บินอิสระตามทิศกล้อง/จอยสติ๊ก) มือถือและ PC
--- กด 'บิน' เพื่อเปิด/ปิด, ใช้จอยสติ๊กหรือ WASD เพื่อพุ่งทิศทางที่ต้องการ
+-- Superman Fly Script (ทิศทางตรงกล้อง, รองรับ Shift Lock, มือถือ+PC)
+-- กด 'บิน' เพื่อเปิด/ปิด, ใช้จอยสติ๊กหรือ WASD เพื่อพุ่งทิศทางตามกล้องจริง
 -- +/– ปรับสปีด
 
 local defaultSpeed = 80
@@ -79,15 +79,27 @@ function startFly()
         local moveDir = Vector3.new()
         if humanoid then moveDir = humanoid.MoveDirection end
 
-        -- ถ้าไม่มีการกดเดิน ให้ลอยอยู่กับที่
+        -- ใช้ทิศทางจากกล้อง 100%
+        -- WASD หรือจอยสติ๊ก = moveDir (local space) เช่น W = (0,0,-1), S = (0,0,1), A = (-1,0,0), D = (1,0,0)
+        -- แปลง moveDir ให้กลายเป็นทิศทางในโลก (world space) ตามกล้อง
         if moveDir.Magnitude > 0 then
-            -- ทิศทางกล้อง (Superman)
-            local camDir = Vector3.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Y, cam.CFrame.LookVector.Z)
-            -- ทิศของ moveDir จะสัมพันธ์กับกล้อง (มือถือใช้จอยสติ๊ก)
-            local flyVec = (cam.CFrame:VectorToWorldSpace(moveDir)).Unit * flySpeed
-            bv.Velocity = flyVec
-            -- หมุนตัวตามกล้อง
-            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + flyVec)
+            local camCF = cam.CFrame
+            -- ตัดแกน Y ออกถ้าต้องการบินแนวระนาบเท่านั้น (ถ้าจะบินขึ้น/ลงด้วย Shift+W ให้ใช้ cam.CFrame.FullVector)
+            -- ใช้ LookVector/RightVector/UpVector สร้างทิศทาง world
+            local forward = camCF.LookVector
+            local right = camCF.RightVector
+            local up = camCF.UpVector
+
+            -- ทิศทางสุดท้าย (world) = right * x + forward * z
+            local worldDir = (right * moveDir.X + forward * moveDir.Z).Unit
+            -- แก้ไขกรณี moveDir.Y (ถ้าอยากให้บินขึ้น/ลงตามจอยสติ๊กมือถือ)
+            if moveDir.Y ~= 0 then
+                worldDir = ((right * moveDir.X) + (forward * moveDir.Z) + (up * moveDir.Y)).Unit
+            end
+
+            bv.Velocity = worldDir * flySpeed
+            -- หมุนตัวละครให้หันไปทิศทางที่บิน
+            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + worldDir)
         else
             bv.Velocity = Vector3.new(0,0,0)
             bg.CFrame = cam.CFrame
