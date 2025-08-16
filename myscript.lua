@@ -1,5 +1,5 @@
--- Superman Fly Script (ทิศทางตรงกล้อง, รองรับ Shift Lock, มือถือ+PC)
--- กด 'บิน' เพื่อเปิด/ปิด, ใช้จอยสติ๊กหรือ WASD เพื่อพุ่งทิศทางตามกล้องจริง
+-- Superman Fly Script (Real-Time Camera Direction, มือถือ+PC)
+-- กด "บิน" เพื่อเปิด/ปิด, กดเดินหน้าหรือจอยสติ๊กพุ่งไปทางกล้องทันที
 -- +/– ปรับสปีด
 
 local defaultSpeed = 80
@@ -79,27 +79,12 @@ function startFly()
         local moveDir = Vector3.new()
         if humanoid then moveDir = humanoid.MoveDirection end
 
-        -- ใช้ทิศทางจากกล้อง 100%
-        -- WASD หรือจอยสติ๊ก = moveDir (local space) เช่น W = (0,0,-1), S = (0,0,1), A = (-1,0,0), D = (1,0,0)
-        -- แปลง moveDir ให้กลายเป็นทิศทางในโลก (world space) ตามกล้อง
+        -- ถ้า MoveDirection เดินหน้าหรือจอยสติ๊กเดินหน้า ให้พุ่งไป LookVector กล้องทันที
         if moveDir.Magnitude > 0 then
-            local camCF = cam.CFrame
-            -- ตัดแกน Y ออกถ้าต้องการบินแนวระนาบเท่านั้น (ถ้าจะบินขึ้น/ลงด้วย Shift+W ให้ใช้ cam.CFrame.FullVector)
-            -- ใช้ LookVector/RightVector/UpVector สร้างทิศทาง world
-            local forward = camCF.LookVector
-            local right = camCF.RightVector
-            local up = camCF.UpVector
-
-            -- ทิศทางสุดท้าย (world) = right * x + forward * z
-            local worldDir = (right * moveDir.X + forward * moveDir.Z).Unit
-            -- แก้ไขกรณี moveDir.Y (ถ้าอยากให้บินขึ้น/ลงตามจอยสติ๊กมือถือ)
-            if moveDir.Y ~= 0 then
-                worldDir = ((right * moveDir.X) + (forward * moveDir.Z) + (up * moveDir.Y)).Unit
-            end
-
-            bv.Velocity = worldDir * flySpeed
-            -- หมุนตัวละครให้หันไปทิศทางที่บิน
-            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + worldDir)
+            -- ให้เดินหน้าตามทิศทางกล้องเท่านั้น
+            local look = cam.CFrame.LookVector
+            bv.Velocity = look.Unit * flySpeed
+            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + look)
         else
             bv.Velocity = Vector3.new(0,0,0)
             bg.CFrame = cam.CFrame
@@ -156,4 +141,4 @@ UIS.InputBegan:Connect(function(i, gpe)
         flySpeed = math.max(minSpeed, flySpeed - 10)
         updateInfo()
     end
-end)
+end
