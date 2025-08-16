@@ -1,14 +1,13 @@
--- Fly Script (เดิน/จอยสติ๊กควบคุมทิศทาง) รองรับมือถือและ PC
--- ปุ่ม: บิน/หยุดบิน, ขึ้น⬆️, ลง⬇️, +Speed, -Speed
+-- Superman Fly Script (บินอิสระตามทิศกล้อง/จอยสติ๊ก) มือถือและ PC
+-- กด 'บิน' เพื่อเปิด/ปิด, ใช้จอยสติ๊กหรือ WASD เพื่อพุ่งทิศทางที่ต้องการ
+-- +/– ปรับสปีด
 
-local defaultSpeed = 50
+local defaultSpeed = 80
 local minSpeed = 10
 local maxSpeed = 200
 
 local flySpeed = defaultSpeed
 local flying = false
-local up = false
-local down = false
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
@@ -16,9 +15,8 @@ local hrp = char:WaitForChild("HumanoidRootPart")
 local humanoid = char:FindFirstChildOfClass("Humanoid")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local ContextActionService = game:GetService("ContextActionService")
 
--- สร้าง GUI มือถือ
+-- GUI สำหรับมือถือ
 local function makeButton(name, pos, size, text, parent)
     local b = Instance.new("TextButton")
     b.Name = name
@@ -37,13 +35,11 @@ local function makeButton(name, pos, size, text, parent)
 end
 
 local scrnGui = Instance.new("ScreenGui")
-scrnGui.Name = "MobileFlyGUI"
+scrnGui.Name = "SupermanFlyGUI"
 scrnGui.ResetOnSpawn = false
 scrnGui.Parent = game.CoreGui or player.PlayerGui
 
 local flyBtn = makeButton("FlyBtn", Vector2.new(30, 200), Vector2.new(100, 50), "บิน", scrnGui)
-local upBtn = makeButton("UpBtn", Vector2.new(140, 140), Vector2.new(50, 50), "⬆️", scrnGui)
-local downBtn = makeButton("DownBtn", Vector2.new(140, 200), Vector2.new(50, 50), "⬇️", scrnGui)
 local speedUpBtn = makeButton("SpeedUpBtn", Vector2.new(30, 140), Vector2.new(50, 50), "+", scrnGui)
 local speedDownBtn = makeButton("SpeedDownBtn", Vector2.new(90, 140), Vector2.new(50, 50), "-", scrnGui)
 local infoLabel = Instance.new("TextLabel", scrnGui)
@@ -56,46 +52,44 @@ infoLabel.Font = Enum.Font.SourceSansBold
 infoLabel.TextScaled = true
 infoLabel.Text = "Fly: OFF | Speed: "..flySpeed
 
--- ตัวแปร BodyMover
-local bv, bg
+local bv, bg, flyConn
 
 local function updateInfo()
     infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | Speed: "..flySpeed
 end
 
-function fly()
+function startFly()
     if flying then return end
     flying = true
-
     if humanoid then
-        humanoid.PlatformStand = true -- ป้องกันไม่ให้ร่างกายถูกฟิสิกส์ปกติรบกวน
+        humanoid.PlatformStand = true
     end
-
     bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-    bv.Velocity = Vector3.new(0,0,0)
+    bv.MaxForce = Vector3.new(1e6,1e6,1e6)
     bv.Parent = hrp
     bg = Instance.new("BodyGyro")
-    bg.MaxTorque = Vector3.new(1e5,1e5,1e5)
+    bg.MaxTorque = Vector3.new(1e6,1e6,1e6)
     bg.P = 1e4
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
 
-    -- ควบคุมการบินด้วยการเดิน (MoveDirection)
-    RunService.RenderStepped:Connect(function()
-        if flying and bv and bg and bv.Parent and bg.Parent then
-            local cam = workspace.CurrentCamera
-            local move = humanoid and humanoid.MoveDirection or Vector3.new()
-            local moveVec = Vector3.new()
-            if move.Magnitude > 0 then
-                -- บินตามทิศทางเดิน
-                moveVec = move.Unit * flySpeed
-            end
-            -- เพิ่มขึ้น/ลง (Y) ตามปุ่ม
-            if up then moveVec = moveVec + Vector3.new(0, flySpeed, 0) end
-            if down then moveVec = moveVec + Vector3.new(0, -flySpeed, 0) end
+    flyConn = RunService.Heartbeat:Connect(function()
+        if not flying or not bv or not bg or not bv.Parent or not bg.Parent then return end
+        local cam = workspace.CurrentCamera
+        local moveDir = Vector3.new()
+        if humanoid then moveDir = humanoid.MoveDirection end
 
-            bv.Velocity = moveVec
+        -- ถ้าไม่มีการกดเดิน ให้ลอยอยู่กับที่
+        if moveDir.Magnitude > 0 then
+            -- ทิศทางกล้อง (Superman)
+            local camDir = Vector3.new(cam.CFrame.LookVector.X, cam.CFrame.LookVector.Y, cam.CFrame.LookVector.Z)
+            -- ทิศของ moveDir จะสัมพันธ์กับกล้อง (มือถือใช้จอยสติ๊ก)
+            local flyVec = (cam.CFrame:VectorToWorldSpace(moveDir)).Unit * flySpeed
+            bv.Velocity = flyVec
+            -- หมุนตัวตามกล้อง
+            bg.CFrame = CFrame.new(hrp.Position, hrp.Position + flyVec)
+        else
+            bv.Velocity = Vector3.new(0,0,0)
             bg.CFrame = cam.CFrame
         end
     end)
@@ -107,6 +101,7 @@ function stopFly()
     if humanoid then
         humanoid.PlatformStand = false
     end
+    if flyConn then flyConn:Disconnect() end
     if bv then pcall(function() bv:Destroy() end) end
     if bg then pcall(function() bg:Destroy() end) end
     updateInfo()
@@ -118,14 +113,10 @@ flyBtn.MouseButton1Click:Connect(function()
         stopFly()
         flyBtn.Text = "บิน"
     else
-        fly()
+        startFly()
         flyBtn.Text = "หยุดบิน"
     end
 end)
-upBtn.MouseButton1Down:Connect(function() up = true end)
-upBtn.MouseButton1Up:Connect(function() up = false end)
-downBtn.MouseButton1Down:Connect(function() down = true end)
-downBtn.MouseButton1Up:Connect(function() down = false end)
 speedUpBtn.MouseButton1Click:Connect(function()
     flySpeed = math.min(maxSpeed, flySpeed + 10)
     updateInfo()
@@ -135,7 +126,7 @@ speedDownBtn.MouseButton1Click:Connect(function()
     updateInfo()
 end)
 
--- ปุ่มคีย์บอร์ด (PC)
+-- คีย์บอร์ด (PC)
 UIS.InputBegan:Connect(function(i, gpe)
     if gpe then return end
     if i.KeyCode == Enum.KeyCode.F then
@@ -143,21 +134,14 @@ UIS.InputBegan:Connect(function(i, gpe)
             stopFly()
             flyBtn.Text = "บิน"
         else
-            fly()
+            startFly()
             flyBtn.Text = "หยุดบิน"
         end
-    elseif i.KeyCode == Enum.KeyCode.Space then up = true
-    elseif i.KeyCode == Enum.KeyCode.LeftControl then down = true
     elseif i.KeyCode == Enum.KeyCode.Equals then
         flySpeed = math.min(maxSpeed, flySpeed + 10)
         updateInfo()
     elseif i.KeyCode == Enum.KeyCode.Minus then
         flySpeed = math.max(minSpeed, flySpeed - 10)
         updateInfo()
-    end
-end)
-UIS.InputEnded:Connect(function(i)
-    if i.KeyCode == Enum.KeyCode.Space then up = false
-    elseif i.KeyCode == Enum.KeyCode.LeftControl then down = false
     end
 end)
