@@ -1,7 +1,7 @@
--- Superman Fly Script (Delta Executor มือถือ, PlayerGui UI, กล้องตรงทิศ)
--- กด "บิน" เพื่อเปิด/ปิด, กดเดินหน้าหรือจอยสติ๊กเพื่อบินไปทางกล้อง, +/– ปรับสปีด
+-- Superman Fly + NoClip (ทะลุทุกสิ่ง, มือถือ/PC/Delta)
+-- ปุ่ม "บิน" เปิด/ปิด, เดินหน้าหรือจอยสติ๊ก = พุ่งไปทางกล้อง, +/– ปรับสปีด
 
-local defaultSpeed, minSpeed, maxSpeed = 80, 10, 1000
+local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
 local flySpeed, flying = defaultSpeed, false
 
 local player = game.Players.LocalPlayer
@@ -11,9 +11,9 @@ local humanoid = char:FindFirstChildOfClass("Humanoid")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- สร้าง GUI ใน PlayerGui สำหรับ Delta
+-- GUI ใน PlayerGui
 local scrnGui = Instance.new("ScreenGui")
-scrnGui.Name = "SupermanFlyGUI"
+scrnGui.Name = "SupermanFlyNoClipGUI"
 scrnGui.ResetOnSpawn = false
 scrnGui.Parent = player:WaitForChild("PlayerGui")
 
@@ -47,10 +47,19 @@ infoLabel.Font = Enum.Font.SourceSansBold
 infoLabel.TextScaled = true
 infoLabel.Text = "Fly: OFF | Speed: "..flySpeed
 
-local bv, bg, flyConn
+local bv, bg, flyConn, noclipConn
 
 local function updateInfo()
     infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | Speed: "..flySpeed
+end
+
+-- NoClip: ปิด Collision ตลอดเวลาบิน
+local function setNoClip(state)
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") and part.CanCollide ~= not state then
+            part.CanCollide = not state
+        end
+    end
 end
 
 function startFly()
@@ -67,6 +76,14 @@ function startFly()
     bg.P = 1e4
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
+
+    -- เปิด NoClip ตลอดเวลาบิน
+    setNoClip(true)
+    noclipConn = RunService.Stepped:Connect(function()
+        if flying then
+            setNoClip(true)
+        end
+    end)
 
     flyConn = RunService.Heartbeat:Connect(function()
         if not flying or not bv or not bg or not bv.Parent or not bg.Parent then return end
@@ -88,8 +105,11 @@ function stopFly()
     flying = false
     if humanoid then humanoid.PlatformStand = false end
     if flyConn then flyConn:Disconnect() end
+    if noclipConn then noclipConn:Disconnect() end
     if bv then pcall(function() bv:Destroy() end) end
     if bg then pcall(function() bg:Destroy() end) end
+    -- คืน Collision ทุกชิ้นส่วน
+    setNoClip(false)
     updateInfo()
 end
 
@@ -111,7 +131,6 @@ speedDownBtn.MouseButton1Click:Connect(function()
     updateInfo()
 end)
 
--- รองรับคีย์บอร์ด (PC ด้วย)
 UIS.InputBegan:Connect(function(i, gpe)
     if gpe then return end
     if i.KeyCode == Enum.KeyCode.F then
@@ -131,5 +150,4 @@ UIS.InputBegan:Connect(function(i, gpe)
     end
 end)
 
-print("Superman Fly (Delta/มือถือ) loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กมือถือเพื่อพุ่งไปทางกล้อง")
-
+print("Superman Fly + NoClip loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กเพื่อพุ่งทะลุสิ่งกีดขวางไปทางกล้อง")
