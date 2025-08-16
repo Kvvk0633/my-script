@@ -1,7 +1,5 @@
--- Fly & NoClip UI (Drag ได้, InfoLabel บรรทัดเดียว, Modern Style, มือถือ/PC/Delta)
-
-local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
-local flySpeed, flying, noclipping = defaultSpeed, false, false
+-- Maru Hub Style Fly & NoClip UI (โปร่งใส, เงา, มุมมน, Drag ได้, Sidebar, Modern)
+-- สามารถนำไปต่อยอดใส่ฟีเจอร์เพิ่มได้
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
@@ -10,128 +8,170 @@ local humanoid = char:FindFirstChildOfClass("Humanoid")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- MainFrame (เริ่มที่ขวาล่าง)
+-- UI MainFrame
 local scrnGui = Instance.new("ScreenGui")
-scrnGui.Name = "FlyNoClipUI"
+scrnGui.Name = "FlyNoClipMaruUI"
 scrnGui.ResetOnSpawn = false
 scrnGui.Parent = player:WaitForChild("PlayerGui")
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 300, 0, 90)
-mainFrame.Position = UDim2.new(1, -310, 1, -150)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 40, 60)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size = UDim2.new(0, 410, 0, 340)
+mainFrame.Position = UDim2.new(0.5, -205, 0.35, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(22, 30, 44)
+mainFrame.BackgroundTransparency = 0.18
 mainFrame.BorderSizePixel = 0
-mainFrame.Active = true -- สำคัญสำหรับ Drag
-mainFrame.Draggable = false -- เราจะใช้ custom drag
+mainFrame.Active = true
 mainFrame.Parent = scrnGui
 
 local mainCorner = Instance.new("UICorner", mainFrame)
-mainCorner.CornerRadius = UDim.new(0, 22)
-
-local mainStroke = Instance.new("UIStroke", mainFrame)
-mainStroke.Thickness = 2
-mainStroke.Color = Color3.fromRGB(85, 170, 255)
-mainStroke.Transparency = 0.25
+mainCorner.CornerRadius = UDim.new(0, 18)
 
 local shadow = Instance.new("ImageLabel", mainFrame)
 shadow.BackgroundTransparency = 1
 shadow.Image = "rbxassetid://1316045217"
-shadow.Size = UDim2.new(1, 32, 1, 32)
-shadow.Position = UDim2.new(0, -16, 0, -16)
+shadow.Size = UDim2.new(1, 40, 1, 40)
+shadow.Position = UDim2.new(0, -20, 0, -20)
 shadow.ZIndex = 0
 shadow.ImageColor3 = Color3.new(0, 0, 0)
-shadow.ImageTransparency = 0.8
+shadow.ImageTransparency = 0.75
 
--- ปุ่ม Modern
-local function makeButton(name, pos, size, text, color)
+-- Sidebar
+local sidebar = Instance.new("Frame", mainFrame)
+sidebar.Size = UDim2.new(0, 70, 1, 0)
+sidebar.Position = UDim2.new(0, 0, 0, 0)
+sidebar.BackgroundColor3 = Color3.fromRGB(27, 39, 59)
+sidebar.BackgroundTransparency = 0.18
+sidebar.BorderSizePixel = 0
+local sidebarCorner = Instance.new("UICorner", sidebar)
+sidebarCorner.CornerRadius = UDim.new(0, 16)
+
+-- (Optional) Logo
+local logo = Instance.new("ImageLabel", sidebar)
+logo.Name = "Logo"
+logo.Size = UDim2.new(0, 54, 0, 54)
+logo.Position = UDim2.new(0, 8, 0, 10)
+logo.BackgroundTransparency = 1
+logo.Image = "rbxassetid://7733960981" -- ตัวอย่างโลโก้/เปลี่ยนได้
+
+-- Sidebar buttons (icon only for demo)
+local sidebarBtns = {
+    {name="Main", icon="rbxassetid://6031094670"},
+    {name="Items", icon="rbxassetid://6031265976"},
+    {name="Shop", icon="rbxassetid://6031075938"},
+    {name="Visual", icon="rbxassetid://6031071050"},
+    {name="Settings", icon="rbxassetid://6031280882"},
+}
+for i, data in ipairs(sidebarBtns) do
+    local btn = Instance.new("ImageButton", sidebar)
+    btn.Name = data.name.."Btn"
+    btn.Size = UDim2.new(0, 34, 0, 34)
+    btn.Position = UDim2.new(0, 18, 0, 70 + (i-1)*38)
+    btn.BackgroundTransparency = 1
+    btn.Image = data.icon
+    btn.ImageColor3 = Color3.fromRGB(160, 185, 255)
+    btn.AutoButtonColor = true
+end
+
+-- Content Frame
+local content = Instance.new("Frame", mainFrame)
+content.Name = "Content"
+content.BackgroundTransparency = 1
+content.Position = UDim2.new(0, 76, 0, 0)
+content.Size = UDim2.new(1, -76, 1, 0)
+
+-- Title
+local title = Instance.new("TextLabel", content)
+title.Size = UDim2.new(1, -20, 0, 36)
+title.Position = UDim2.new(0, 10, 0, 12)
+title.BackgroundTransparency = 1
+title.Text = "Main"
+title.TextColor3 = Color3.fromRGB(210, 225, 255)
+title.Font = Enum.Font.GothamBlack
+title.TextScaled = true
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Subtitle
+local subtitle = Instance.new("TextLabel", content)
+subtitle.Size = UDim2.new(1, -20, 0, 22)
+subtitle.Position = UDim2.new(0, 10, 0, 50)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Settings"
+subtitle.TextColor3 = Color3.fromRGB(150, 180, 255)
+subtitle.Font = Enum.Font.GothamSemibold
+subtitle.TextScaled = true
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ปุ่ม Fly/NoClip/Speed
+local function makeModernBtn(name, pos, text, color)
     local b = Instance.new("TextButton")
     b.Name = name
-    b.Size = size
+    b.Size = UDim2.new(0, 120, 0, 36)
     b.Position = pos
     b.Text = text
-    b.BackgroundColor3 = color or Color3.fromRGB(40, 120, 250)
-    b.TextColor3 = Color3.fromRGB(255,255,255)
-    b.BackgroundTransparency = 0
+    b.BackgroundColor3 = color or Color3.fromRGB(44, 144, 255)
+    b.TextColor3 = Color3.fromRGB(240,255,255)
+    b.BackgroundTransparency = 0.09
     b.BorderSizePixel = 0
     b.Font = Enum.Font.GothamBold
     b.TextScaled = true
     b.AutoButtonColor = true
-    b.ZIndex = 2
-
     local corner = Instance.new("UICorner", b)
-    corner.CornerRadius = UDim.new(0, 14)
-
+    corner.CornerRadius = UDim.new(0, 12)
     local stroke = Instance.new("UIStroke", b)
     stroke.Thickness = 2
-    stroke.Color = Color3.fromRGB(255,255,255)
-    stroke.Transparency = 0.7
-
-    local grad = Instance.new("UIGradient", b)
-    grad.Rotation = 90
-    grad.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
-        ColorSequenceKeypoint.new(1, b.BackgroundColor3)
-    }
-    grad.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 0.30),
-        NumberSequenceKeypoint.new(1, 0.0),
-    }
+    stroke.Color = Color3.fromRGB(200,220,255)
+    stroke.Transparency = 0.45
     return b
 end
 
-local flyBtn = makeButton("FlyBtn", UDim2.new(0, 10, 0, 10), UDim2.new(0, 80, 0, 32), "บิน", Color3.fromRGB(40, 130, 255))
-flyBtn.Parent = mainFrame
-local noclipBtn = makeButton("NoClipBtn", UDim2.new(0, 100, 0, 10), UDim2.new(0, 80, 0, 32), "NoClip", Color3.fromRGB(60, 200, 110))
-noclipBtn.Parent = mainFrame
-local speedUpBtn = makeButton("SpeedUpBtn", UDim2.new(0, 200, 0, 10), UDim2.new(0, 40, 0, 32), "+", Color3.fromRGB(110, 160, 250))
-speedUpBtn.Parent = mainFrame
-local speedDownBtn = makeButton("SpeedDownBtn", UDim2.new(0, 250, 0, 10), UDim2.new(0, 40, 0, 32), "-", Color3.fromRGB(110, 160, 250))
-speedDownBtn.Parent = mainFrame
+local flyBtn = makeModernBtn("FlyBtn", UDim2.new(0, 12, 0, 85), "บิน", Color3.fromRGB(44,144,255))
+flyBtn.Parent = content
+local noclipBtn = makeModernBtn("NoClipBtn", UDim2.new(0, 142, 0, 85), "NoClip", Color3.fromRGB(60, 200, 110))
+noclipBtn.Parent = content
+local speedUpBtn = makeModernBtn("SpeedUpBtn", UDim2.new(0, 272, 0, 85), "+", Color3.fromRGB(110, 160, 250))
+speedUpBtn.Size = UDim2.new(0, 56, 0, 36)
+speedUpBtn.Parent = content
+local speedDownBtn = makeModernBtn("SpeedDownBtn", UDim2.new(0, 334, 0, 85), "-", Color3.fromRGB(110, 160, 250))
+speedDownBtn.Size = UDim2.new(0, 32, 0, 36)
+speedDownBtn.Parent = content
 
-local infoLabel = Instance.new("TextLabel", mainFrame)
+-- InfoLabel (บรรทัดเดียว)
+local infoLabel = Instance.new("TextLabel", content)
 infoLabel.Name = "InfoLabel"
-infoLabel.Position = UDim2.new(0, 10, 0, 52)
-infoLabel.Size = UDim2.new(1, -20, 0, 28)
-infoLabel.BackgroundTransparency = 0.13
+infoLabel.Position = UDim2.new(0, 14, 0, 135)
+infoLabel.Size = UDim2.new(1, -24, 0, 28)
+infoLabel.BackgroundTransparency = 0.16
 infoLabel.BackgroundColor3 = Color3.fromRGB(60, 75, 100)
-infoLabel.TextColor3 = Color3.fromRGB(255,255,255)
+infoLabel.TextColor3 = Color3.fromRGB(205,230,255)
 infoLabel.Font = Enum.Font.GothamSemibold
 infoLabel.TextScaled = true
 infoLabel.TextWrapped = false
 infoLabel.ClipsDescendants = true
-infoLabel.Text = "Fly: OFF | NoClip: OFF | Speed: "..flySpeed
-infoLabel.ZIndex = 2
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.Text = "Fly: OFF | NoClip: OFF | Speed: 80"
 local infoCorner = Instance.new("UICorner", infoLabel)
-infoCorner.CornerRadius = UDim.new(0, 12)
+infoCorner.CornerRadius = UDim.new(0, 10)
 local infoStroke = Instance.new("UIStroke", infoLabel)
 infoStroke.Thickness = 1
 infoStroke.Color = Color3.fromRGB(180,220,255)
 infoStroke.Transparency = 0.5
 
--- Drag (มือถือ+PC)
+-- Drag (Touch+Mouse)
 do
     local dragging, dragInput, dragStart, startPos
-    local UserInputService = game:GetService("UserInputService")
-
     local function update(input)
         if not dragging then return end
         local delta = input.Position - dragStart
-        mainFrame.Position = UDim2.new(
-            mainFrame.Position.X.Scale,
-            math.clamp(startPos.X.Offset + delta.X, 0, scrnGui.AbsoluteSize.X - mainFrame.AbsoluteSize.X),
-            mainFrame.Position.Y.Scale,
-            math.clamp(startPos.Y.Offset + delta.Y, 0, scrnGui.AbsoluteSize.Y - mainFrame.AbsoluteSize.Y)
-        )
+        local newX = math.clamp(startPos.X.Offset + delta.X, 0, scrnGui.AbsoluteSize.X - mainFrame.AbsoluteSize.X)
+        local newY = math.clamp(startPos.Y.Offset + delta.Y, 0, scrnGui.AbsoluteSize.Y - mainFrame.AbsoluteSize.Y)
+        mainFrame.Position = UDim2.new(0, newX, 0, newY)
     end
-
     mainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = mainFrame.Position
-
             input.Changed:Connect(function()
                 if input.UserInputState == Enum.UserInputState.End then
                     dragging = false
@@ -144,20 +184,22 @@ do
             dragInput = input
         end
     end)
-    UserInputService.InputChanged:Connect(function(input)
+    UIS.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             update(input)
         end
     end)
 end
 
+-- Fly & NoClip Logic (เหมือนเวอร์ชันล่าสุด)
+local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
+local flySpeed, flying, noclipping = defaultSpeed, false, false
 local bv, bg, flyConn, noclipConn
 
 local function updateInfo()
     infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | NoClip: "..(noclipping and "ON" or "OFF").." | Speed: "..flySpeed
 end
 
--- NoClip แบบแรงสุด
 local function strongNoClip()
     for _, part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
@@ -293,4 +335,4 @@ player.CharacterAdded:Connect(function(newChar)
     noclipBtn.Text = "NoClip"
 end)
 
-print("Fly & NoClip UI (Drag+Modern) loaded! เปิด/ปิดแยกได้ กด F = Fly, N = NoClip, + - = Speed, ลากกรอบได้")
+print("Maru Hub Style UI loaded! Drag ได้, Fly/NoClip มี Info ชัดเจน, สวยงามแบบในภาพ")
