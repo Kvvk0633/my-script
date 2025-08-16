@@ -1,8 +1,8 @@
--- Superman Fly + Strong NoClip (ทะลุแน่นอน มือถือ/PC/Delta)
--- ปุ่ม "บิน" เปิด/ปิด, เดินหน้าหรือจอยสติ๊ก = พุ่งไปทางกล้อง, +/– ปรับสปีด
+-- Fly & NoClip UI แยก (มือถือ/PC/Delta)
+-- ปุ่ม Fly = Superman, ปุ่ม NoClip = ทะลุสิ่งของ, +/– ปรับสปีด
 
 local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
-local flySpeed, flying = defaultSpeed, false
+local flySpeed, flying, noclipping = defaultSpeed, false, false
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
@@ -13,7 +13,7 @@ local RunService = game:GetService("RunService")
 
 -- GUI ใน PlayerGui
 local scrnGui = Instance.new("ScreenGui")
-scrnGui.Name = "SupermanFlyNoClipGUI"
+scrnGui.Name = "FlyNoClipUI"
 scrnGui.ResetOnSpawn = false
 scrnGui.Parent = player:WaitForChild("PlayerGui")
 
@@ -37,23 +37,24 @@ end
 local flyBtn = makeButton("FlyBtn", Vector2.new(30, 200), Vector2.new(100, 50), "บิน")
 local speedUpBtn = makeButton("SpeedUpBtn", Vector2.new(30, 140), Vector2.new(50, 50), "+")
 local speedDownBtn = makeButton("SpeedDownBtn", Vector2.new(90, 140), Vector2.new(50, 50), "-")
+local noclipBtn = makeButton("NoClipBtn", Vector2.new(140, 200), Vector2.new(100, 50), "NoClip")
 local infoLabel = Instance.new("TextLabel", scrnGui)
 infoLabel.Name = "InfoLabel"
 infoLabel.Position = UDim2.new(0, 30, 0, 270)
-infoLabel.Size = UDim2.new(0, 160, 0, 30)
+infoLabel.Size = UDim2.new(0, 220, 0, 30)
 infoLabel.BackgroundTransparency = 1
 infoLabel.TextColor3 = Color3.new(1,1,1)
 infoLabel.Font = Enum.Font.SourceSansBold
 infoLabel.TextScaled = true
-infoLabel.Text = "Fly: OFF | Speed: "..flySpeed
+infoLabel.Text = "Fly: OFF | NoClip: OFF | Speed: "..flySpeed
 
 local bv, bg, flyConn, noclipConn
 
 local function updateInfo()
-    infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | Speed: "..flySpeed
+    infoLabel.Text = "Fly: "..(flying and "ON" or "OFF").." | NoClip: "..(noclipping and "ON" or "OFF").." | Speed: "..flySpeed
 end
 
--- NoClip: ปิด Collision ทุกเฟรม ทุกชิ้นจริง
+-- NoClip แบบแรงสุด
 local function strongNoClip()
     for _, part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
@@ -75,9 +76,7 @@ end
 function startFly()
     if flying then return end
     flying = true
-    if humanoid then
-        humanoid.PlatformStand = true
-    end
+    if humanoid then humanoid.PlatformStand = true end
     bv = Instance.new("BodyVelocity")
     bv.MaxForce = Vector3.new(1e6,1e6,1e6)
     bv.Parent = hrp
@@ -86,9 +85,6 @@ function startFly()
     bg.P = 1e4
     bg.CFrame = hrp.CFrame
     bg.Parent = hrp
-
-    -- NoClip ทุกเฟรม
-    noclipConn = RunService.Stepped:Connect(strongNoClip)
 
     flyConn = RunService.Heartbeat:Connect(function()
         if not flying or not bv or not bg or not bv.Parent or not bg.Parent then return end
@@ -110,9 +106,22 @@ function stopFly()
     flying = false
     if humanoid then humanoid.PlatformStand = false end
     if flyConn then flyConn:Disconnect() end
-    if noclipConn then noclipConn:Disconnect() end
     if bv then pcall(function() bv:Destroy() end) end
     if bg then pcall(function() bg:Destroy() end) end
+    updateInfo()
+end
+
+function startNoClip()
+    if noclipping then return end
+    noclipping = true
+    strongNoClip()
+    noclipConn = RunService.Stepped:Connect(strongNoClip)
+    updateInfo()
+end
+
+function stopNoClip()
+    noclipping = false
+    if noclipConn then noclipConn:Disconnect() end
     resetCollide()
     updateInfo()
 end
@@ -124,6 +133,15 @@ flyBtn.MouseButton1Click:Connect(function()
     else
         startFly()
         flyBtn.Text = "หยุดบิน"
+    end
+end)
+noclipBtn.MouseButton1Click:Connect(function()
+    if noclipping then
+        stopNoClip()
+        noclipBtn.Text = "NoClip"
+    else
+        startNoClip()
+        noclipBtn.Text = "หยุด NoClip"
     end
 end)
 speedUpBtn.MouseButton1Click:Connect(function()
@@ -145,6 +163,14 @@ UIS.InputBegan:Connect(function(i, gpe)
             startFly()
             flyBtn.Text = "หยุดบิน"
         end
+    elseif i.KeyCode == Enum.KeyCode.N then
+        if noclipping then
+            stopNoClip()
+            noclipBtn.Text = "NoClip"
+        else
+            startNoClip()
+            noclipBtn.Text = "หยุด NoClip"
+        end
     elseif i.KeyCode == Enum.KeyCode.Equals then
         flySpeed = math.min(maxSpeed, flySpeed + 10)
         updateInfo()
@@ -154,4 +180,13 @@ UIS.InputBegan:Connect(function(i, gpe)
     end
 end)
 
-print("Superman Fly + Strong NoClip loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กจะทะลุทุกอย่างไปทางกล้อง")
+-- รีเซ็ต NoClip เมื่อ respawn
+player.CharacterAdded:Connect(function(newChar)
+    char = newChar
+    hrp = char:WaitForChild("HumanoidRootPart")
+    humanoid = char:FindFirstChildOfClass("Humanoid")
+    stopFly()
+    stopNoClip()
+end)
+
+print("Fly & NoClip UI loaded! เปิด/ปิดแยกได้ กด F = Fly, N = NoClip, + - = Speed")
