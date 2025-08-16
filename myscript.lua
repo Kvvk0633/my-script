@@ -1,7 +1,7 @@
 -- Superman Fly Script (Delta Executor มือถือ, PlayerGui UI, กล้องตรงทิศ)
 -- กด "บิน" เพื่อเปิด/ปิด, กดเดินหน้าหรือจอยสติ๊กเพื่อบินไปทางกล้อง, +/– ปรับสปีด
 
-local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
+local defaultSpeed, minSpeed, maxSpeed = 80, 10, 1000
 local flySpeed, flying = defaultSpeed, false
 
 local player = game.Players.LocalPlayer
@@ -132,3 +132,4 @@ UIS.InputBegan:Connect(function(i, gpe)
 end)
 
 print("Superman Fly (Delta/มือถือ) loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กมือถือเพื่อพุ่งไปทางกล้อง")
+
