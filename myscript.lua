@@ -51,3 +51,4 @@ uis.InputBegan:Connect(function(input, processed)
 end)
 
 print("Fly script loaded! กด F เพื่อบิน, = เพิ่มสปีด, - ลดสปีด")
+
