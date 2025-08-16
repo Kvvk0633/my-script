@@ -1,12 +1,8 @@
--- Superman Fly Script (บินตามกล้อง, GUI รองรับมือถือ 100%)
--- ปุ่ม: "บิน", "+", "-" โชว์บนหน้าจอ กดเดินหน้าจะบินไปทางกล้องทันที
+-- Superman Fly Script (Delta Executor มือถือ, PlayerGui UI, กล้องตรงทิศ)
+-- กด "บิน" เพื่อเปิด/ปิด, กดเดินหน้าหรือจอยสติ๊กเพื่อบินไปทางกล้อง, +/– ปรับสปีด
 
-local defaultSpeed = 80
-local minSpeed = 10
-local maxSpeed = 200
-
-local flySpeed = defaultSpeed
-local flying = false
+local defaultSpeed, minSpeed, maxSpeed = 80, 10, 200
+local flySpeed, flying = defaultSpeed, false
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
@@ -15,13 +11,13 @@ local humanoid = char:FindFirstChildOfClass("Humanoid")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- สร้าง GUI ใน PlayerGui เท่านั้น (ปลอดภัยสุด)
+-- สร้าง GUI ใน PlayerGui สำหรับ Delta
 local scrnGui = Instance.new("ScreenGui")
 scrnGui.Name = "SupermanFlyGUI"
 scrnGui.ResetOnSpawn = false
 scrnGui.Parent = player:WaitForChild("PlayerGui")
 
-local function makeButton(name, pos, size, text, parent)
+local function makeButton(name, pos, size, text)
     local b = Instance.new("TextButton")
     b.Name = name
     b.Size = UDim2.new(0, size.X, 0, size.Y)
@@ -34,13 +30,13 @@ local function makeButton(name, pos, size, text, parent)
     b.Font = Enum.Font.SourceSansBold
     b.TextScaled = true
     b.AutoButtonColor = true
-    b.Parent = parent
+    b.Parent = scrnGui
     return b
 end
 
-local flyBtn = makeButton("FlyBtn", Vector2.new(30, 200), Vector2.new(100, 50), "บิน", scrnGui)
-local speedUpBtn = makeButton("SpeedUpBtn", Vector2.new(30, 140), Vector2.new(50, 50), "+", scrnGui)
-local speedDownBtn = makeButton("SpeedDownBtn", Vector2.new(90, 140), Vector2.new(50, 50), "-", scrnGui)
+local flyBtn = makeButton("FlyBtn", Vector2.new(30, 200), Vector2.new(100, 50), "บิน")
+local speedUpBtn = makeButton("SpeedUpBtn", Vector2.new(30, 140), Vector2.new(50, 50), "+")
+local speedDownBtn = makeButton("SpeedDownBtn", Vector2.new(90, 140), Vector2.new(50, 50), "-")
 local infoLabel = Instance.new("TextLabel", scrnGui)
 infoLabel.Name = "InfoLabel"
 infoLabel.Position = UDim2.new(0, 30, 0, 270)
@@ -75,10 +71,7 @@ function startFly()
     flyConn = RunService.Heartbeat:Connect(function()
         if not flying or not bv or not bg or not bv.Parent or not bg.Parent then return end
         local cam = workspace.CurrentCamera
-        local moveDir = Vector3.new()
-        if humanoid then moveDir = humanoid.MoveDirection end
-
-        -- ถ้าเดินหน้าหรือจอยสติ๊กเดินหน้า ให้พุ่งไปทางกล้อง
+        local moveDir = humanoid and humanoid.MoveDirection or Vector3.new()
         if moveDir.Magnitude > 0 then
             local look = cam.CFrame.LookVector
             bv.Velocity = look.Unit * flySpeed
@@ -93,16 +86,13 @@ end
 
 function stopFly()
     flying = false
-    if humanoid then
-        humanoid.PlatformStand = false
-    end
+    if humanoid then humanoid.PlatformStand = false end
     if flyConn then flyConn:Disconnect() end
     if bv then pcall(function() bv:Destroy() end) end
     if bg then pcall(function() bg:Destroy() end) end
     updateInfo()
 end
 
--- ปุ่มมือถือ
 flyBtn.MouseButton1Click:Connect(function()
     if flying then
         stopFly()
@@ -121,7 +111,7 @@ speedDownBtn.MouseButton1Click:Connect(function()
     updateInfo()
 end)
 
--- คีย์บอร์ด (PC)
+-- รองรับคีย์บอร์ด (PC ด้วย)
 UIS.InputBegan:Connect(function(i, gpe)
     if gpe then return end
     if i.KeyCode == Enum.KeyCode.F then
@@ -141,4 +131,4 @@ UIS.InputBegan:Connect(function(i, gpe)
     end
 end)
 
-print("Superman Fly (Camera Direction, PlayerGui) loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กเพื่อพุ่งไปทางกล้อง")
+print("Superman Fly (Delta/มือถือ) loaded! กด 'บิน' แล้วเดินหน้าหรือจอยสติ๊กมือถือเพื่อพุ่งไปทางกล้อง")
